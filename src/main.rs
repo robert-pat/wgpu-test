@@ -1,4 +1,4 @@
-use wgpu::{InstanceDescriptor, TextureFormat};
+use wgpu::{InstanceDescriptor};
 use winit::event::{Event, VirtualKeyCode, WindowEvent};
 use winit::event_loop;
 use winit::event_loop::ControlFlow;
@@ -18,7 +18,10 @@ struct AppState{
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
-    window: window::Window
+    window: window::Window,
+
+    // Not from the tutorial; experimentation
+    screen_color: wgpu::Color
 }
 
 impl AppState {
@@ -66,13 +69,15 @@ impl AppState {
         };
         surface.configure(&device, &config); // Configure the surface using the newly made config
 
+        let color = wgpu::Color::BLACK;
         Self{
             surface,
             device,
             queue,
             config,
             size,
-            window
+            window,
+            screen_color: color
         }
     }
 
@@ -89,8 +94,20 @@ impl AppState {
         }
     }
 
+    /// Whether an event is still processing
     fn input(&mut self, event: &WindowEvent) -> bool {
-        false
+        match event{
+            WindowEvent::CursorMoved {position, ..} => {
+                self.screen_color = wgpu::Color{
+                    r: 0.5,
+                    g: 0.05,
+                    b: position.y as f64 / self.size.height as f64,
+                    a: 1.0
+                };
+                true
+            },
+            _ => false
+        }
     }
 
     fn update(&mut self) {
@@ -118,12 +135,7 @@ impl AppState {
 
                 // What to do w/ the texture specified
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color { // clear the screen when loading the last texture
-                        r: 0.5,
-                        g: 0.05,
-                        b: 0.0,
-                        a: 1.0,
-                    }),
+                    load: wgpu::LoadOp::Clear(self.screen_color), // replace the texture w/ this color on load
                     store: true, // store the result of the render to the texture
                 },
             })],
@@ -154,6 +166,9 @@ async fn run(){
 
         match event{ // Matching the event
             Event::WindowEvent {event: window_event, window_id} if window_id == state.window().id() => {
+                if state.input(&window_event){ // Don't do anything else if the last event is processing
+                    return ();
+                }
                 match window_event {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
 
