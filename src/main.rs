@@ -1,8 +1,10 @@
 use wgpu::{InstanceDescriptor};
-use winit::event::{Event, VirtualKeyCode, WindowEvent};
+use winit::event::{Event, MouseButton, VirtualKeyCode, WindowEvent};
 use winit::event_loop;
 use winit::event_loop::ControlFlow;
 use winit::window;
+
+mod game;
 
 /*
 * Following this tutorial: https://zdgeier.com/wgpuintro.html, but it seems to be a little bit old
@@ -12,7 +14,7 @@ use winit::window;
 * Also following: https://sotrh.github.io/learn-wgpu/beginner/tutorial2-surface/#state-new
 */
 
-struct AppState{
+struct DisplayState {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -21,10 +23,11 @@ struct AppState{
     window: window::Window,
 
     // Not from the tutorial; experimentation
-    screen_color: wgpu::Color
+    screen_color: wgpu::Color,
+    sample_app: game::GameBoard
 }
 
-impl AppState {
+impl DisplayState {
     // Creating some of the wgpu types requires async code
     async fn new(window: window::Window) -> Self {
         let size = window.inner_size();
@@ -77,7 +80,8 @@ impl AppState {
             config,
             size,
             window,
-            screen_color: color
+            screen_color: color,
+            sample_app: game::GameBoard::default()
         }
     }
 
@@ -100,12 +104,24 @@ impl AppState {
             WindowEvent::CursorMoved {position, ..} => {
                 self.screen_color = wgpu::Color{
                     r: 0.5,
-                    g: 0.05,
+                    g: position.x as f64 / self.size.width as f64,
                     b: position.y as f64 / self.size.height as f64,
                     a: 1.0
                 };
                 true
             },
+
+            WindowEvent::MouseInput {button, ..} => {
+                match button{
+                    MouseButton::Left => self.screen_color = wgpu::Color::BLACK,
+                    MouseButton::Right => {
+                        println!("Cell is {}", self.sample_app.get(0, 0))
+                    },
+                    _ => {}
+                }
+                true
+            },
+
             _ => false
         }
     }
@@ -158,7 +174,7 @@ async fn run(){
     let window = window::WindowBuilder::new().build(&event_loop).unwrap();
 
     // create the state struct
-    let mut state = pollster::block_on(AppState::new(window));
+    let mut state = pollster::block_on(DisplayState::new(window));
 
     // Creating a closure (lambda) to handle all of the incoming events
     event_loop.run(move |event, _, control_flow| {
