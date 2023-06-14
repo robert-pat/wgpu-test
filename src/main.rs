@@ -180,7 +180,7 @@ impl DisplayState {
     }
 
     fn update(&mut self) {
-        //TODO: we apparently have nothing to update
+        // we apparently have nothing to update
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> { //IDK where the error variants would get returned
@@ -238,7 +238,7 @@ async fn run(){
         match event{ // Matching the event
             Event::WindowEvent {event: window_event, window_id} if window_id == state.window().id() => {
                 if state.input(&window_event){ // Don't do anything else if the last event is processing
-                    return ();
+                    return;
                 }
                 match window_event {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
