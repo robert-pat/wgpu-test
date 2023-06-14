@@ -22,6 +22,7 @@ struct DisplayState {
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
     window: window::Window,
+    render_pipeline: wgpu::RenderPipeline,
 
     // Not from the tutorial; experimentation
     screen_color: wgpu::Color,
@@ -74,6 +75,56 @@ impl DisplayState {
         surface.configure(&device, &config); // Configure the surface using the newly made config
 
         let color = wgpu::Color::BLACK;
+
+        let shader = device.create_shader_module(
+            wgpu::ShaderModuleDescriptor{
+                label: Some("Shader"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into())
+            }
+        );
+        let render_pipeline_layout = device.create_pipeline_layout(
+            &wgpu::PipelineLayoutDescriptor{
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[],
+                push_constant_ranges: &[]
+            }
+        );
+        let render_pipeline = device.create_render_pipeline(
+            &wgpu::RenderPipelineDescriptor{
+                label: Some("Render Pipeline"),
+                layout: Some(&render_pipeline_layout),
+                vertex: wgpu::VertexState{
+                    module: &shader,
+                    entry_point: "vs_main",
+                    buffers: &[]
+                },
+                fragment: Some(wgpu::FragmentState{
+                    module: &shader,
+                    entry_point: "fs_main",
+                    targets: &[Some(wgpu::ColorTargetState{
+                        format: config.format,
+                        blend: Some(wgpu::BlendState::REPLACE),
+                        write_mask: wgpu::ColorWrites::ALL
+                    })]
+                }),
+                primitive: wgpu::PrimitiveState{
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: Some(wgpu::Face::Back),
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    unclipped_depth: false,
+                    conservative: false
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState{
+                    count: 1,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false
+                },
+                multiview: None
+            }
+        );
         Self{
             surface,
             device,
@@ -81,6 +132,7 @@ impl DisplayState {
             config,
             size,
             window,
+            render_pipeline,
             screen_color: color,
             sample_app: game::GameBoard::default()
         }
@@ -105,8 +157,8 @@ impl DisplayState {
             WindowEvent::CursorMoved {position, ..} => {
                 self.screen_color = wgpu::Color{
                     r: 0.5,
-                    g: position.x as f64 / self.size.width as f64,
-                    b: position.y as f64 / self.size.height as f64,
+                    g: position.x / self.size.width as f64,
+                    b: position.y / self.size.height as f64,
                     a: 1.0
                 };
                 true
@@ -142,7 +194,7 @@ impl DisplayState {
             }
         );
 
-        let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
             // I think: an array slice of Option<wgpu::RenderPassColorAttachment>
             // Where we will draw stuff (e.g. what texture, ...)
@@ -158,14 +210,16 @@ impl DisplayState {
             })],
             depth_stencil_attachment: None,
         });
+        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.draw(0..3, 0..1);
         // begin_render_pass() has a &mut self, so calling the function borrows it
         // finish() below also has an &mut self, and you can only have one mutable reference,
         // so we have to drop render_pass & release the reference
-        drop(_render_pass);
+        drop(render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish())); //finish buffer & add it to queue
         output.present();
-        return Ok(());
+        Ok(())
     }
 }
 
