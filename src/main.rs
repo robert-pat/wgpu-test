@@ -12,6 +12,7 @@ mod game;
 * Good Luck!
 *
 * Also following: https://sotrh.github.io/learn-wgpu/beginner/tutorial2-surface/#state-new
+* ^tbh the first tutorial wasn't that good, so everything is mostly brought back to the above
 */
 
 struct DisplayState {
@@ -159,7 +160,7 @@ impl DisplayState {
         });
         // begin_render_pass() has a &mut self, so calling the function borrows it
         // finish() below also has an &mut self, and you can only have one mutable reference,
-        // so we have to drop (clear/delete/i think) render_pass
+        // so we have to drop render_pass & release the reference
         drop(_render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish())); //finish buffer & add it to queue
