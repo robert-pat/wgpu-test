@@ -10,23 +10,24 @@ pub enum CellStatus {
     Alive,
     Dead,
 }
+impl From<CellStatus> for char {
+    fn from(value: CellStatus) -> Self {
+        match value {
+            CellStatus::Alive => '☑',
+            CellStatus::Dead => '☒',
+        }
+    }
+}
 impl std::fmt::Display for CellStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                CellStatus::Alive => '☑',
-                CellStatus::Dead => '☒',
-            }
-        )
+        write!(f, "{}", <CellStatus as Into<char>>::into(*self))
     }
 }
 
 pub struct GameBoard {
-    pub board: Vec<Vec<CellStatus>>,
-    pub x_max: usize,
-    pub y_max: usize,
+    board: Vec<Vec<CellStatus>>,
+    x_max: usize,
+    y_max: usize,
 }
 impl GameBoard {
     pub fn new(x: usize, y: usize) -> Self {
